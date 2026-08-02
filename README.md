@@ -1,10 +1,10 @@
 # AwaySwitch
 
-AwaySwitch is a small macOS menu-bar utility that disconnects selected desktop apps while you are away. It is designed for the case where Amphetamine keeps Codex, OpenClaw, or another background job running, but an active WhatsApp desktop session prevents notifications from returning to your phone.
+AwaySwitch is a small macOS menu-bar utility that disconnects selected desktop apps while you are away. It is designed for the case where Codex, OpenClaw, Amphetamine, or another process keeps the Mac awake, but an active WhatsApp desktop session prevents notifications from returning to your phone.
 
 When your Mac locks, its screens sleep, the user session becomes inactive, or the system begins sleeping, AwaySwitch normally quits the apps you selected. When you return, it reopens only the apps it successfully closed.
 
-AwaySwitch does not keep the Mac awake, change `pmset`, install a privileged helper, override lid-close behavior, collect telemetry, or make network requests.
+AwaySwitch does not depend on Amphetamine and does not care which process supplies the keep-awake assertion. It also does not keep the Mac awake itself, change `pmset`, install a privileged helper, override lid-close behavior, collect telemetry, or make network requests.
 
 ## Install
 
@@ -52,9 +52,11 @@ awayswitch --status
 awayswitch --check-config
 ```
 
-## Recommended Amphetamine setup
+## Keep-awake setup
 
-Keep power management in Amphetamine and presence management in AwaySwitch:
+No special setup is needed when Codex, OpenClaw, or another app already keeps the Mac awake by itself. AwaySwitch works independently from that assertion.
+
+If you use Amphetamine, keep power management there and presence management in AwaySwitch:
 
 1. In Amphetamine, create an app/process Trigger for Codex, OpenClaw, or the background process that must continue.
 2. Allow display sleep and screen locking for that Trigger.
