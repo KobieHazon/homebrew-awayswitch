@@ -1,3 +1,5 @@
+require "etc"
+
 class Awayswitch < Formula
   desc "Disconnect selected Mac apps while you are away"
   homepage "https://github.com/KobieHazon/homebrew-awayswitch"
@@ -14,7 +16,7 @@ class Awayswitch < Formula
   end
 
   def post_install
-    applications = Pathname(Dir.home)/"Applications"
+    applications = Pathname(Etc.getpwuid(Process.uid).dir)/"Applications"
     applications.mkpath
     app_link = applications/"AwaySwitch.app"
 
