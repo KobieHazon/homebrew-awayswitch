@@ -15,7 +15,7 @@ brew install KobieHazon/awayswitch/awayswitch
 brew services start KobieHazon/awayswitch/awayswitch
 ```
 
-The second command starts AwaySwitch immediately and registers it as a per-user LaunchAgent, so it returns at login. Look for the shield icon in the menu bar.
+The second command starts AwaySwitch immediately and registers it as a per-user LaunchAgent, so it returns at login. Look for **AS** in the menu bar.
 
 To update:
 
@@ -50,6 +50,7 @@ Useful health checks:
 ```bash
 awayswitch --status
 awayswitch --check-config
+awayswitch --show-settings
 ```
 
 ## Keep-awake setup

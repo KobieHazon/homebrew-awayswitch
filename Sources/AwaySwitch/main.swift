@@ -4,12 +4,27 @@ import Darwin
 import Foundation
 
 private let awaySwitchVersion = "0.1.0"
+private let showSettingsNotification = Notification.Name("com.kobiehazon.AwaySwitch.showSettings")
 
 private func runCommandLineModeIfNeeded() {
     let arguments = Set(CommandLine.arguments.dropFirst())
     guard !arguments.isEmpty else { return }
 
     if arguments == ["--show-settings"] {
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        let hasRunningInstance = NSRunningApplication.runningApplications(
+            withBundleIdentifier: "com.kobiehazon.AwaySwitch"
+        ).contains { $0.processIdentifier != currentPID && !$0.isTerminated }
+
+        if hasRunningInstance {
+            DistributedNotificationCenter.default().postNotificationName(
+                showSettingsNotification,
+                object: nil,
+                userInfo: nil,
+                deliverImmediately: true
+            )
+            exit(EXIT_SUCCESS)
+        }
         return
     }
 
@@ -43,7 +58,7 @@ private func runCommandLineModeIfNeeded() {
         }
     }
 
-    fputs("Usage: awayswitch [--version | --status | --check-config]\n", stderr)
+    fputs("Usage: awayswitch [--version | --status | --check-config | --show-settings]\n", stderr)
     exit(EXIT_FAILURE)
 }
 
@@ -52,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinator: AwayCoordinator?
     private var observer: WorkspaceObserver?
     private var statusMenuController: StatusMenuController?
+    private var showSettingsToken: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let store = AwaySwitchFileStore()
@@ -69,12 +85,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.statusMenuController = statusMenuController
         observer.start()
 
+        showSettingsToken = DistributedNotificationCenter.default().addObserver(
+            forName: showSettingsNotification,
+            object: nil,
+            queue: .main
+        ) { [weak statusMenuController] _ in
+            MainActor.assumeIsolated {
+                statusMenuController?.showSettings()
+            }
+        }
+
         if isFirstLaunch || CommandLine.arguments.contains("--show-settings") {
             statusMenuController.showSettings()
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let showSettingsToken {
+            DistributedNotificationCenter.default().removeObserver(showSettingsToken)
+        }
         observer?.stop()
         coordinator?.persistAll()
     }

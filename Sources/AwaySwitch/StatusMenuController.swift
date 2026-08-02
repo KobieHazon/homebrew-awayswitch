@@ -11,32 +11,33 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     init(coordinator: AwayCoordinator) {
         self.coordinator = coordinator
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
+        statusItem.autosaveName = "AwaySwitch"
+        statusItem.isVisible = true
         menu.delegate = self
         statusItem.menu = menu
         update()
     }
 
     func update() {
-        let symbolName: String
         let description: String
         if !coordinator.settings.protectionEnabled {
-            symbolName = "shield.slash"
             description = "AwaySwitch paused"
         } else if coordinator.isAway {
-            symbolName = "iphone.slash"
             description = "AwaySwitch protecting phone notifications"
         } else {
-            symbolName = "checkmark.shield"
             description = "AwaySwitch ready"
         }
 
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: description)
-            ?? NSImage(systemSymbolName: "shield", accessibilityDescription: description)
-        image?.isTemplate = true
-        statusItem.button?.image = image
-        statusItem.button?.toolTip = description
+        if let button = statusItem.button {
+            button.image = nil
+            button.title = "AS"
+            button.font = .systemFont(ofSize: 12, weight: .semibold)
+            button.toolTip = description
+            button.setAccessibilityLabel(description)
+            button.setAccessibilityHelp("Open the AwaySwitch menu")
+        }
         settingsWindow.refresh()
     }
 
