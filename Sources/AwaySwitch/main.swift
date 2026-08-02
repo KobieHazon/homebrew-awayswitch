@@ -5,6 +5,13 @@ import Foundation
 
 private let awaySwitchVersion = "0.1.0"
 private let showSettingsNotification = Notification.Name("com.kobiehazon.AwaySwitch.showSettings")
+private let awaySwitchBundleIdentifier = "com.kobiehazon.AwaySwitch"
+
+private var userApplicationURL: URL {
+    FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Applications", isDirectory: true)
+        .appendingPathComponent("AwaySwitch.app", isDirectory: true)
+}
 
 private func runCommandLineModeIfNeeded() {
     let arguments = Set(CommandLine.arguments.dropFirst())
@@ -18,6 +25,17 @@ private func runCommandLineModeIfNeeded() {
             deliverImmediately: true
         )
         exit(EXIT_SUCCESS)
+    }
+
+    if arguments == ["--remove-app"] {
+        do {
+            try removeUserApplicationCopy()
+            print("AwaySwitch was removed from the user Applications folder")
+            exit(EXIT_SUCCESS)
+        } catch {
+            fputs("AwaySwitch: \(error.localizedDescription)\n", stderr)
+            exit(EXIT_FAILURE)
+        }
     }
 
     if arguments.contains("--version") {
@@ -50,8 +68,95 @@ private func runCommandLineModeIfNeeded() {
         }
     }
 
-    fputs("Usage: awayswitch [--version | --status | --check-config | --show-settings]\n", stderr)
+    fputs("Usage: awayswitch [--version | --status | --check-config | --show-settings | --remove-app]\n", stderr)
     exit(EXIT_FAILURE)
+}
+
+private func installUserApplicationCopyIfNeeded() {
+    guard Bundle.main.bundleIdentifier == awaySwitchBundleIdentifier else { return }
+
+    let fileManager = FileManager.default
+    let sourceURL = Bundle.main.bundleURL.standardizedFileURL
+    let destinationURL = userApplicationURL.standardizedFileURL
+
+    // A copy launched directly from ~/Applications is already in place.
+    guard sourceURL.resolvingSymlinksInPath() != destinationURL.resolvingSymlinksInPath() else {
+        return
+    }
+
+    let destinationExists = fileManager.fileExists(atPath: destinationURL.path)
+        || (try? fileManager.destinationOfSymbolicLink(atPath: destinationURL.path)) != nil
+    if destinationExists,
+       Bundle(url: destinationURL)?.bundleIdentifier != awaySwitchBundleIdentifier {
+        return
+    }
+
+    let applicationsURL = destinationURL.deletingLastPathComponent()
+    let temporaryURL = applicationsURL.appendingPathComponent(
+        ".AwaySwitch-installing-\(ProcessInfo.processInfo.processIdentifier).app",
+        isDirectory: true
+    )
+    defer { try? fileManager.removeItem(at: temporaryURL) }
+
+    do {
+        try fileManager.createDirectory(at: applicationsURL, withIntermediateDirectories: true)
+        try? fileManager.removeItem(at: temporaryURL)
+        try fileManager.copyItem(at: sourceURL, to: temporaryURL)
+        if destinationExists {
+            try fileManager.removeItem(at: destinationURL)
+        }
+        try fileManager.moveItem(at: temporaryURL, to: destinationURL)
+        registerUserApplication(at: destinationURL)
+    } catch {
+        fputs("AwaySwitch: could not install the user Applications copy: \(error.localizedDescription)\n", stderr)
+    }
+}
+
+private func registerUserApplication(at url: URL) {
+    let commands = [
+        (
+            "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+            ["-f", url.path]
+        ),
+        ("/usr/bin/mdimport", ["-i", url.path]),
+    ]
+
+    for command in commands {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: command.0)
+        process.arguments = command.1
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            fputs("AwaySwitch: could not register the app with macOS: \(error.localizedDescription)\n", stderr)
+        }
+    }
+    NSWorkspace.shared.noteFileSystemChanged(url.path)
+}
+
+private func removeUserApplicationCopy() throws {
+    let fileManager = FileManager.default
+    let url = userApplicationURL
+    let exists = fileManager.fileExists(atPath: url.path)
+        || (try? fileManager.destinationOfSymbolicLink(atPath: url.path)) != nil
+    guard exists else { return }
+    guard Bundle(url: url)?.bundleIdentifier == awaySwitchBundleIdentifier else {
+        throw AwaySwitchAppInstallError.unexpectedApplication(url.path)
+    }
+    try fileManager.removeItem(at: url)
+    NSWorkspace.shared.noteFileSystemChanged(url.path)
+}
+
+private enum AwaySwitchAppInstallError: LocalizedError {
+    case unexpectedApplication(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .unexpectedApplication(path):
+            "Refusing to remove an application not owned by AwaySwitch at \(path)."
+        }
+    }
 }
 
 @MainActor
@@ -62,7 +167,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var showSettingsToken: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        installUserApplicationsShortcutIfNeeded()
+        let isBackgroundService = ProcessInfo.processInfo.environment["AWAYSWITCH_SERVICE"] == "1"
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        let hasExistingInstance = NSWorkspace.shared.runningApplications.contains {
+            $0.bundleIdentifier == awaySwitchBundleIdentifier
+                && $0.processIdentifier != currentPID
+                && !$0.isTerminated
+        }
+
+        if !isBackgroundService, hasExistingInstance {
+            DistributedNotificationCenter.default().postNotificationName(
+                showSettingsNotification,
+                object: nil,
+                userInfo: nil,
+                deliverImmediately: true
+            )
+            NSApp.terminate(nil)
+            return
+        }
+
+        installUserApplicationCopyIfNeeded()
 
         let store = AwaySwitchFileStore()
         let isFirstLaunch = !FileManager.default.fileExists(atPath: store.settingsURL.path)
@@ -89,7 +213,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        let isBackgroundService = ProcessInfo.processInfo.environment["AWAYSWITCH_SERVICE"] == "1"
         if isFirstLaunch || CommandLine.arguments.contains("--show-settings") || !isBackgroundService {
             statusMenuController.showSettings()
         }
@@ -111,35 +234,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator?.persistAll()
     }
 
-    private func installUserApplicationsShortcutIfNeeded() {
-        guard Bundle.main.bundleIdentifier == "com.kobiehazon.AwaySwitch" else { return }
-
-        let fileManager = FileManager.default
-        let applicationsURL = fileManager.homeDirectoryForCurrentUser
-            .appendingPathComponent("Applications", isDirectory: true)
-        let shortcutURL = applicationsURL.appendingPathComponent("AwaySwitch.app")
-
-        // Preserve any existing app or link. The Homebrew opt path is stable
-        // across upgrades, so an AwaySwitch-created link never needs rewriting.
-        if fileManager.fileExists(atPath: shortcutURL.path)
-            || (try? fileManager.destinationOfSymbolicLink(atPath: shortcutURL.path)) != nil {
-            return
-        }
-
-        do {
-            try fileManager.createDirectory(
-                at: applicationsURL,
-                withIntermediateDirectories: true
-            )
-            try fileManager.createSymbolicLink(
-                at: shortcutURL,
-                withDestinationURL: Bundle.main.bundleURL
-            )
-            NSWorkspace.shared.noteFileSystemChanged(shortcutURL.path)
-        } catch {
-            fputs("AwaySwitch: could not create the Applications shortcut: \(error.localizedDescription)\n", stderr)
-        }
-    }
 }
 
 runCommandLineModeIfNeeded()

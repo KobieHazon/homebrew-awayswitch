@@ -81,7 +81,7 @@ WhatsApp controls notification routing, so phone notifications may take a few se
 
 ```bash
 brew services stop KobieHazon/awayswitch/awayswitch
-unlink ~/Applications/AwaySwitch.app
+awayswitch --remove-app
 brew uninstall KobieHazon/awayswitch/awayswitch
 brew untap KobieHazon/awayswitch
 ```
