@@ -6,7 +6,7 @@ repository_dir="$(cd "$(dirname "$0")/.." && pwd)"
 configuration="${1:-release}"
 app_bundle="$repository_dir/.build/AwaySwitch.app"
 
-"$repository_dir/scripts/swiftpm" build --configuration "$configuration"
+"$repository_dir/scripts/swiftpm" build --configuration "$configuration" --disable-sandbox
 
 rm -rf "$app_bundle"
 mkdir -p "$app_bundle/Contents/MacOS"
