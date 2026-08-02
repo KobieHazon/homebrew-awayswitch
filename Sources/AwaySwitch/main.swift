@@ -62,6 +62,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var showSettingsToken: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        installUserApplicationsShortcutIfNeeded()
+
         let store = AwaySwitchFileStore()
         let isFirstLaunch = !FileManager.default.fileExists(atPath: store.settingsURL.path)
         let coordinator = AwayCoordinator(store: store)
@@ -107,6 +109,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         observer?.stop()
         coordinator?.persistAll()
+    }
+
+    private func installUserApplicationsShortcutIfNeeded() {
+        guard Bundle.main.bundleIdentifier == "com.kobiehazon.AwaySwitch" else { return }
+
+        let fileManager = FileManager.default
+        let applicationsURL = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications", isDirectory: true)
+        let shortcutURL = applicationsURL.appendingPathComponent("AwaySwitch.app")
+
+        // Preserve any existing app or link. The Homebrew opt path is stable
+        // across upgrades, so an AwaySwitch-created link never needs rewriting.
+        if fileManager.fileExists(atPath: shortcutURL.path)
+            || (try? fileManager.destinationOfSymbolicLink(atPath: shortcutURL.path)) != nil {
+            return
+        }
+
+        do {
+            try fileManager.createDirectory(
+                at: applicationsURL,
+                withIntermediateDirectories: true
+            )
+            try fileManager.createSymbolicLink(
+                at: shortcutURL,
+                withDestinationURL: Bundle.main.bundleURL
+            )
+            NSWorkspace.shared.noteFileSystemChanged(shortcutURL.path)
+        } catch {
+            fputs("AwaySwitch: could not create the Applications shortcut: \(error.localizedDescription)\n", stderr)
+        }
     }
 }
 
