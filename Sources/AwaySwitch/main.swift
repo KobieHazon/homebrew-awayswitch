@@ -87,9 +87,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if isFirstLaunch || CommandLine.arguments.contains("--show-settings") {
+        let isBackgroundService = ProcessInfo.processInfo.environment["AWAYSWITCH_SERVICE"] == "1"
+        if isFirstLaunch || CommandLine.arguments.contains("--show-settings") || !isBackgroundService {
             statusMenuController.showSettings()
         }
+    }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        statusMenuController?.showSettings()
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -8,6 +8,8 @@
     <string>AwaySwitch</string>
     <key>CFBundleIdentifier</key>
     <string>com.kobiehazon.AwaySwitch</string>
+    <key>CFBundleIconFile</key>
+    <string>AwaySwitch</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

@@ -15,7 +15,7 @@ brew install KobieHazon/awayswitch/awayswitch
 brew services start KobieHazon/awayswitch/awayswitch
 ```
 
-The second command starts AwaySwitch immediately and registers it as a per-user LaunchAgent, so it returns at login. Look for **AS** in the menu bar.
+Homebrew also places **AwaySwitch.app** in your user Applications folder, so you can find and launch it from Spotlight or Launchpad like any other Mac app. Launching the app opens its settings. The second command starts AwaySwitch immediately and registers it as a per-user LaunchAgent, so it returns at login. Look for **AS** in the menu bar.
 
 To update:
 
@@ -81,6 +81,7 @@ WhatsApp controls notification routing, so phone notifications may take a few se
 
 ```bash
 brew services stop KobieHazon/awayswitch/awayswitch
+unlink ~/Applications/AwaySwitch.app
 brew uninstall KobieHazon/awayswitch/awayswitch
 brew untap KobieHazon/awayswitch
 ```

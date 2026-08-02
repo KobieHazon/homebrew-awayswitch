@@ -21,6 +21,8 @@ jobs:
         run: |
           .build/AwaySwitch.app/Contents/MacOS/AwaySwitch --version
           .build/AwaySwitch.app/Contents/MacOS/AwaySwitch --check-config
+          test -s .build/AwaySwitch.app/Contents/Resources/AwaySwitch.icns
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' .build/AwaySwitch.app/Contents/Info.plist)" = "AwaySwitch"
           codesign --verify --deep --strict .build/AwaySwitch.app
 
   formula:
