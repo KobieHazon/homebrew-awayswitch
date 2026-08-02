@@ -3,7 +3,7 @@ class Awayswitch < Formula
   homepage "https://github.com/KobieHazon/homebrew-awayswitch"
   url "https://github.com/KobieHazon/homebrew-awayswitch.git", tag: "v0.1.0"
   license "MIT"
-  head "https://github.com/KobieHazon/homebrew-awayswitch.git", branch: "feature/awayswitch-v1"
+  head "https://github.com/KobieHazon/homebrew-awayswitch.git", branch: "main"
 
   depends_on macos: :ventura
 
