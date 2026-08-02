@@ -11,21 +11,13 @@ private func runCommandLineModeIfNeeded() {
     guard !arguments.isEmpty else { return }
 
     if arguments == ["--show-settings"] {
-        let currentPID = ProcessInfo.processInfo.processIdentifier
-        let hasRunningInstance = NSRunningApplication.runningApplications(
-            withBundleIdentifier: "com.kobiehazon.AwaySwitch"
-        ).contains { $0.processIdentifier != currentPID && !$0.isTerminated }
-
-        if hasRunningInstance {
-            DistributedNotificationCenter.default().postNotificationName(
-                showSettingsNotification,
-                object: nil,
-                userInfo: nil,
-                deliverImmediately: true
-            )
-            exit(EXIT_SUCCESS)
-        }
-        return
+        DistributedNotificationCenter.default().postNotificationName(
+            showSettingsNotification,
+            object: nil,
+            userInfo: nil,
+            deliverImmediately: true
+        )
+        exit(EXIT_SUCCESS)
     }
 
     if arguments.contains("--version") {
