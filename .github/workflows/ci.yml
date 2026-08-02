@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run unit tests
+        run: scripts/run-tests
+      - name: Build release executable
+        run: scripts/build-app release
+      - name: Verify command-line health checks
+        run: |
+          .build/AwaySwitch.app/Contents/MacOS/AwaySwitch --version
+          .build/AwaySwitch.app/Contents/MacOS/AwaySwitch --check-config
+          codesign --verify --deep --strict .build/AwaySwitch.app
+
+  formula:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Homebrew style
+        run: brew style Formula/awayswitch.rb
+      - name: Audit formula
+        run: |
+          brew tap KobieHazon/awayswitch "$GITHUB_WORKSPACE"
+          brew audit --formula KobieHazon/awayswitch/awayswitch

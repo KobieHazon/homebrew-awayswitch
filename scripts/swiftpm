@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -euo pipefail
+
+repository_dir="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repository_dir"
+
+if swift package dump-package >/dev/null 2>&1; then
+    exec swift "$@"
+fi
+
+developer_dir="$(xcode-select -p)"
+manifest_source="$developer_dir/usr/lib/swift/pm/ManifestAPI"
+compatibility_root="$repository_dir/.build/swiftpm-compat"
+
+if [[ ! -d "$manifest_source" ]]; then
+    echo "AwaySwitch: SwiftPM manifest libraries were not found under $developer_dir" >&2
+    exit 1
+fi
+
+mkdir -p "$compatibility_root"
+/usr/bin/ditto "$manifest_source" "$compatibility_root/ManifestAPI"
+rm -f "$compatibility_root/ManifestAPI/PackageDescription.swiftmodule/arm64-apple-macos.private.swiftinterface"
+rm -f "$compatibility_root/ManifestAPI/PackageDescription.swiftmodule/x86_64-apple-macos.private.swiftinterface"
+
+export SWIFTPM_CUSTOM_LIBS_DIR="$compatibility_root"
+export SWIFT_FORCE_MODULE_LOADING="prefer-interface"
+exec swift "$@"

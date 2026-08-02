@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -euo pipefail
+
+repository_dir="$(cd "$(dirname "$0")/.." && pwd)"
+configuration="${1:-release}"
+app_bundle="$repository_dir/.build/AwaySwitch.app"
+
+"$repository_dir/scripts/swiftpm" build --configuration "$configuration"
+
+rm -rf "$app_bundle"
+mkdir -p "$app_bundle/Contents/MacOS"
+cp "$repository_dir/.build/$configuration/AwaySwitch" "$app_bundle/Contents/MacOS/AwaySwitch"
+cp "$repository_dir/packaging/Info.plist" "$app_bundle/Contents/Info.plist"
+/usr/bin/codesign --force --sign - "$app_bundle"
+
+echo "$app_bundle"

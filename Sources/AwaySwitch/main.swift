@@ -1,0 +1,91 @@
+import AppKit
+import AwaySwitchCore
+import Darwin
+import Foundation
+
+private let awaySwitchVersion = "0.1.0"
+
+private func runCommandLineModeIfNeeded() {
+    let arguments = Set(CommandLine.arguments.dropFirst())
+    guard !arguments.isEmpty else { return }
+
+    if arguments == ["--show-settings"] {
+        return
+    }
+
+    if arguments.contains("--version") {
+        print("AwaySwitch \(awaySwitchVersion)")
+        exit(EXIT_SUCCESS)
+    }
+
+    if arguments.contains("--check-config") || arguments.contains("--status") {
+        do {
+            let store = AwaySwitchFileStore()
+            let settings = try store.loadSettings()
+            let runtime = try store.loadRuntime()
+
+            if arguments.contains("--check-config") {
+                print("AwaySwitch configuration is valid")
+            } else {
+                let presence = runtime.presence.isAway
+                    ? "away (\(runtime.presence.reasons.map(\.displayName).sorted().joined(separator: ", ")))"
+                    : "present"
+                print("AwaySwitch \(awaySwitchVersion)")
+                print("Protection: \(settings.protectionEnabled ? "enabled" : "paused")")
+                print("Presence: \(presence)")
+                print("Restore after return: \(settings.restoreAfterReturn ? "yes" : "no")")
+                print("Managed apps: \(settings.managedApps.map(\.displayName).joined(separator: ", "))")
+            }
+            exit(EXIT_SUCCESS)
+        } catch {
+            fputs("AwaySwitch: \(error.localizedDescription)\n", stderr)
+            exit(EXIT_FAILURE)
+        }
+    }
+
+    fputs("Usage: awayswitch [--version | --status | --check-config]\n", stderr)
+    exit(EXIT_FAILURE)
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var coordinator: AwayCoordinator?
+    private var observer: WorkspaceObserver?
+    private var statusMenuController: StatusMenuController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let store = AwaySwitchFileStore()
+        let isFirstLaunch = !FileManager.default.fileExists(atPath: store.settingsURL.path)
+        let coordinator = AwayCoordinator(store: store)
+        let observer = WorkspaceObserver(coordinator: coordinator)
+        let statusMenuController = StatusMenuController(coordinator: coordinator)
+
+        coordinator.onStateChange = { [weak statusMenuController] in
+            statusMenuController?.update()
+        }
+
+        self.coordinator = coordinator
+        self.observer = observer
+        self.statusMenuController = statusMenuController
+        observer.start()
+
+        if isFirstLaunch || CommandLine.arguments.contains("--show-settings") {
+            statusMenuController.showSettings()
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        observer?.stop()
+        coordinator?.persistAll()
+    }
+}
+
+runCommandLineModeIfNeeded()
+
+MainActor.assumeIsolated {
+    let application = NSApplication.shared
+    let delegate = AppDelegate()
+    application.setActivationPolicy(.accessory)
+    application.delegate = delegate
+    application.run()
+}

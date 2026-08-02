@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -euo pipefail
+
+repository_dir="$(cd "$(dirname "$0")/.." && pwd)"
+version="${1:?Usage: scripts/package-source VERSION [OUTPUT_DIRECTORY]}"
+output_directory="${2:-$repository_dir/.build/release-artifacts}"
+archive_name="AwaySwitch-$version.tar.gz"
+
+mkdir -p "$output_directory"
+git -C "$repository_dir" archive \
+    --format=tar \
+    --prefix="AwaySwitch-$version/" \
+    HEAD \
+    | gzip -n > "$output_directory/$archive_name"
+
+shasum -a 256 "$output_directory/$archive_name"

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -euo pipefail
+
+repository_dir="$(cd "$(dirname "$0")/.." && pwd)"
+developer_dir="$(xcode-select -p)"
+frameworks_dir="$developer_dir/Library/Developer/Frameworks"
+testing_interop_dir="$developer_dir/Library/Developer/usr/lib"
+architecture="$(uname -m)"
+
+arguments=(test)
+
+# Swift Testing ships with a macOS 14 deployment target. The product itself
+# remains built for macOS 13; only the test bundle is raised to macOS 14.
+if [[ -d "$frameworks_dir/Testing.framework" ]]; then
+    arguments+=(
+        -Xswiftc -target
+        -Xswiftc "$architecture-apple-macosx14.0"
+        -Xswiftc -F
+        -Xswiftc "$frameworks_dir"
+        -Xlinker -F
+        -Xlinker "$frameworks_dir"
+        -Xlinker -rpath
+        -Xlinker "$frameworks_dir"
+        -Xlinker -rpath
+        -Xlinker "$testing_interop_dir"
+    )
+fi
+
+exec "$repository_dir/scripts/swiftpm" "${arguments[@]}"
