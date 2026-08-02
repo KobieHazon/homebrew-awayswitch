@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Verify version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          grep -F "private let awaySwitchVersion = \"$version\"" Sources/AwaySwitch/main.swift
+          grep -F "tag: \"$GITHUB_REF_NAME\"" Formula/awayswitch.rb
+      - name: Test and build
+        run: |
+          scripts/run-tests
+          scripts/build-app release
+      - name: Package deterministic source archive
+        run: scripts/package-source "${GITHUB_REF_NAME#v}"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          ".build/release-artifacts/AwaySwitch-${GITHUB_REF_NAME#v}.tar.gz"
+          --generate-notes
+          --title "AwaySwitch ${GITHUB_REF_NAME#v}"

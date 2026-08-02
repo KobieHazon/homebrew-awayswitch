@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -euo pipefail
+
+repository_dir="$(cd "$(dirname "$0")/.." && pwd)"
+configuration="${1:-release}"
+app_bundle="$repository_dir/.build/AwaySwitch.app"
+iconset="$repository_dir/.build/AwaySwitch.iconset"
+icon="$repository_dir/.build/AwaySwitch.icns"
+
+"$repository_dir/scripts/swiftpm" build --configuration "$configuration" --disable-sandbox
+swift "$repository_dir/scripts/generate-icon.swift" "$iconset" "$icon"
+
+rm -rf "$app_bundle"
+mkdir -p "$app_bundle/Contents/MacOS"
+mkdir -p "$app_bundle/Contents/Resources"
+cp "$repository_dir/.build/$configuration/AwaySwitch" "$app_bundle/Contents/MacOS/AwaySwitch"
+cp "$icon" "$app_bundle/Contents/Resources/AwaySwitch.icns"
+cp "$repository_dir/packaging/Info.plist" "$app_bundle/Contents/Info.plist"
+/usr/bin/codesign --force --sign - "$app_bundle"
+
+echo "$app_bundle"
