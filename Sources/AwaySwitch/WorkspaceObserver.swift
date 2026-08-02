@@ -23,7 +23,7 @@ final class WorkspaceObserver {
 
         workspaceTokens.append(workspaceCenter.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification,
-            object: NSWorkspace.shared,
+            object: nil,
             queue: .main
         ) { [weak self] notification in
             guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
@@ -36,7 +36,7 @@ final class WorkspaceObserver {
 
         workspaceTokens.append(workspaceCenter.addObserver(
             forName: NSWorkspace.didTerminateApplicationNotification,
-            object: NSWorkspace.shared,
+            object: nil,
             queue: .main
         ) { [weak self] notification in
             guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
@@ -85,7 +85,7 @@ final class WorkspaceObserver {
     ) {
         workspaceTokens.append(center.addObserver(
             forName: name,
-            object: NSWorkspace.shared,
+            object: nil,
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {

@@ -33,4 +33,43 @@ struct PresenceStateTests {
         #expect(state.isAway)
         #expect(state.apply(.systemDidWake) == .becamePresent)
     }
+
+    @Test func restartSnapshotPreservesCurrentAwayReasonsAndClearsStaleOnes() {
+        var state = PresenceState(reasons: [.screenLocked, .systemSleeping])
+
+        #expect(state.reconcileStartupSnapshot(
+            screenLocked: true,
+            screensSleeping: true,
+            sessionActive: false
+        ) == .reasonChanged)
+        #expect(state.reasons == [.screenLocked, .screenSleeping, .sessionInactive])
+        #expect(state.isAway)
+    }
+
+    @Test func restartSnapshotReturnsPresentWhenTheMacIsCurrentlyPresent() {
+        var state = PresenceState(reasons: [
+            .screenLocked,
+            .screenSleeping,
+            .sessionInactive,
+            .systemSleeping,
+        ])
+
+        #expect(state.reconcileStartupSnapshot(
+            screenLocked: false,
+            screensSleeping: false,
+            sessionActive: true
+        ) == .becamePresent)
+        #expect(!state.isAway)
+    }
+
+    @Test func unknownStartupValuesDoNotDiscardPersistedRecoveryState() {
+        var state = PresenceState(reasons: [.screenLocked, .screenSleeping])
+
+        #expect(state.reconcileStartupSnapshot(
+            screenLocked: nil,
+            screensSleeping: nil,
+            sessionActive: nil
+        ) == .unchanged)
+        #expect(state.reasons == [.screenLocked, .screenSleeping])
+    }
 }

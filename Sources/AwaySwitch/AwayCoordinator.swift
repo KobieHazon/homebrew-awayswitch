@@ -30,11 +30,12 @@ final class AwayCoordinator {
             persistenceError = "Could not load saved state: \(error.localizedDescription)"
         }
 
+        let wasPersistedAway = reconciliation.runtime.presence.isAway
         normalizeInitialPresence()
         persistAll()
 
         if reconciliation.runtime.presence.isAway, settings.protectionEnabled {
-            enterAwayState()
+            enterAwayState(recordCurrentlyRunningForRestore: !wasPersistedAway)
         } else if !reconciliation.runtime.presence.isAway,
                   !reconciliation.runtime.restorationQueue.isEmpty {
             restoreQueuedApps()
@@ -193,20 +194,26 @@ final class AwayCoordinator {
     }
 
     private func normalizeInitialPresence() {
-        guard let dictionary = CGSessionCopyCurrentDictionary() as? [String: Any],
-              let isLocked = dictionary["CGSSessionScreenIsLocked"] as? Bool
-        else { return }
+        let dictionary = CGSessionCopyCurrentDictionary() as? [String: Any]
+        let isLocked = dictionary?["CGSSessionScreenIsLocked"] as? Bool
+        let isOnConsole = dictionary?["kCGSessionOnConsoleKey"] as? Bool
+        let screensSleeping = CGDisplayIsAsleep(CGMainDisplayID()) != 0
 
-        if isLocked {
-            _ = reconciliation.applyPresence(.screenLocked)
-        } else if reconciliation.runtime.presence.isAway {
-            reconciliation.setPresenceReasons([])
-        }
+        reconciliation.reconcileStartupPresence(
+            screenLocked: isLocked,
+            screensSleeping: screensSleeping,
+            sessionActive: isOnConsole
+        )
     }
 
-    private func enterAwayState() {
+    private func enterAwayState(recordCurrentlyRunningForRestore: Bool = true) {
         for app in settings.managedApps where applicationRuntime.isRunning(bundleIdentifier: app.bundleIdentifier) {
-            requestTermination(of: app, shouldRestore: true)
+            let alreadyRecorded = runtimeState.pendingTerminations[app.bundleIdentifier]?.shouldRestore == true
+                || runtimeState.restorationQueue[app.bundleIdentifier] != nil
+            requestTermination(
+                of: app,
+                shouldRestore: recordCurrentlyRunningForRestore || alreadyRecorded
+            )
         }
         notifyStateChange()
     }

@@ -90,7 +90,20 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             item.isEnabled = false
             menu.addItem(item)
 
-            if coordinator.runtimeState.failures.values.contains(where: {
+            let failures = coordinator.runtimeState.failures.values
+                .filter { $0.app.bundleIdentifier == app.bundleIdentifier }
+                .sorted { $0.kind.rawValue < $1.kind.rawValue }
+            for failure in failures {
+                let failureItem = NSMenuItem(
+                    title: "  \(failure.message)",
+                    action: nil,
+                    keyEquivalent: ""
+                )
+                failureItem.isEnabled = false
+                menu.addItem(failureItem)
+            }
+
+            if failures.contains(where: {
                 $0.app.bundleIdentifier == app.bundleIdentifier
                     && [.terminationRequest, .terminationTimeout, .forceTermination].contains($0.kind)
             }) {

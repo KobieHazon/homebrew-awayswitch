@@ -105,14 +105,52 @@ public struct PresenceState: Codable, Equatable, Sendable {
             reasons.remove(.systemSleeping)
         }
 
-        guard reasons != previousReasons else { return .unchanged }
-        if !wasAway && isAway { return .becameAway }
-        if wasAway && !isAway { return .becamePresent }
-        return .reasonChanged
+        return transition(wasAway: wasAway, previousReasons: previousReasons)
+    }
+
+    @discardableResult
+    public mutating func reconcileStartupSnapshot(
+        screenLocked: Bool?,
+        screensSleeping: Bool?,
+        sessionActive: Bool?
+    ) -> PresenceTransition {
+        let wasAway = isAway
+        let previousReasons = reasons
+
+        update(.screenLocked, isActive: screenLocked)
+        update(.screenSleeping, isActive: screensSleeping)
+        if let sessionActive {
+            update(.sessionInactive, isActive: !sessionActive)
+        }
+
+        // A process executing at startup is necessarily past system sleep, even
+        // if it missed the corresponding wake notification while not running.
+        reasons.remove(.systemSleeping)
+
+        return transition(wasAway: wasAway, previousReasons: previousReasons)
     }
 
     public mutating func replaceReasons(with reasons: Set<AwayReason>) {
         self.reasons = reasons
+    }
+
+    private mutating func update(_ reason: AwayReason, isActive: Bool?) {
+        guard let isActive else { return }
+        if isActive {
+            reasons.insert(reason)
+        } else {
+            reasons.remove(reason)
+        }
+    }
+
+    private func transition(
+        wasAway: Bool,
+        previousReasons: Set<AwayReason>
+    ) -> PresenceTransition {
+        guard reasons != previousReasons else { return .unchanged }
+        if !wasAway && isAway { return .becameAway }
+        if wasAway && !isAway { return .becamePresent }
+        return .reasonChanged
     }
 }
 

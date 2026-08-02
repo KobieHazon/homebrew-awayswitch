@@ -20,6 +20,19 @@ public struct ReconciliationState: Equatable, Sendable {
         runtime.presence.replaceReasons(with: reasons)
     }
 
+    @discardableResult
+    public mutating func reconcileStartupPresence(
+        screenLocked: Bool?,
+        screensSleeping: Bool?,
+        sessionActive: Bool?
+    ) -> PresenceTransition {
+        runtime.presence.reconcileStartupSnapshot(
+            screenLocked: screenLocked,
+            screensSleeping: screensSleeping,
+            sessionActive: sessionActive
+        )
+    }
+
     public mutating func requestTermination(of app: ManagedApp, shouldRestore: Bool) {
         let existing = runtime.pendingTerminations[app.bundleIdentifier]
         runtime.pendingTerminations[app.bundleIdentifier] = TerminationCandidate(
