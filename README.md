@@ -73,6 +73,7 @@ On an ordinary undocked MacBook, macOS may still sleep when the lid closes. Away
 - Normal termination is requested through `NSRunningApplication`; the app remains listed as needing attention if it refuses to quit.
 - Apps are restored by their saved bundle URL, with Launch Services bundle-ID discovery as a fallback if an app moved.
 - Restoration and pending termination state are written atomically so a restart does not lose which apps AwaySwitch closed.
+- After a restart, AwaySwitch checks the current login, console, lock, and display state before disconnecting apps. A battery shutdown while locked does not leave apps stuck closed after you log in again, including when macOS omits the unlocked session's optional lock field. If session information is unavailable, saved lock state remains until macOS supplies evidence of unlock.
 - Apps manually launched while away are asked to quit again.
 
 WhatsApp controls notification routing, so phone notifications may take a few seconds to resume after its Mac app exits. Verify the behavior with a real incoming message before relying on it.

@@ -1,6 +1,5 @@
 import AppKit
 import AwaySwitchCore
-import CoreGraphics
 import Foundation
 
 @MainActor
@@ -194,15 +193,11 @@ final class AwayCoordinator {
     }
 
     private func normalizeInitialPresence() {
-        let dictionary = CGSessionCopyCurrentDictionary() as? [String: Any]
-        let isLocked = dictionary?["CGSSessionScreenIsLocked"] as? Bool
-        let isOnConsole = dictionary?["kCGSessionOnConsoleKey"] as? Bool
-        let screensSleeping = CGDisplayIsAsleep(CGMainDisplayID()) != 0
-
+        let snapshot = StartupPresenceSnapshot.current()
         reconciliation.reconcileStartupPresence(
-            screenLocked: isLocked,
-            screensSleeping: screensSleeping,
-            sessionActive: isOnConsole
+            screenLocked: snapshot.screenLocked,
+            screensSleeping: snapshot.screensSleeping,
+            sessionActive: snapshot.sessionActive
         )
     }
 
